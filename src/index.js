@@ -1,13 +1,11 @@
 require("dotenv").config();
 
 const { loadConfig } = require("./config");
-const { createLlmClient } = require("./llm");
 const { createDiscordBot } = require("./bot");
 
 async function start() {
   const config = loadConfig();
-  const llmClient = createLlmClient(config.openAiApiKey);
-  const bot = createDiscordBot({ config, llmClient });
+  const bot = createDiscordBot({ config });
 
   await bot.login(config.discordToken);
 }

@@ -1,8 +1,21 @@
 const { Client, GatewayIntentBits, Events } = require("discord.js");
-const { getSkillById } = require("./skills");
-const { generateSkillReply } = require("./llm");
+const { getCommand } = require("./commands");
 
-function createDiscordBot({ config, llmClient }) {
+function parsePrefixedMessage(rawContent, prefix) {
+  if (!rawContent.startsWith(prefix)) return null;
+  const rest = rawContent.slice(prefix.length).trim();
+  if (!rest) return null;
+  const firstSpace = rest.indexOf(" ");
+  if (firstSpace === -1) {
+    return { name: rest.toLowerCase(), args: "" };
+  }
+  return {
+    name: rest.slice(0, firstSpace).toLowerCase(),
+    args: rest.slice(firstSpace + 1).trim(),
+  };
+}
+
+function createDiscordBot({ config }) {
   const client = new Client({
     intents: [
       GatewayIntentBits.Guilds,
@@ -17,40 +30,27 @@ function createDiscordBot({ config, llmClient }) {
 
   client.on(Events.MessageCreate, async (message) => {
     if (message.author.bot) return;
-    if (!message.content.trim()) return;
+    const content = message.content.trim();
+    if (!content) return;
 
-    const shouldRespond =
-      message.mentions.has(client.user) || message.content.startsWith("!ask ");
+    const parsed = parsePrefixedMessage(content, config.commandPrefix);
+    if (!parsed) return;
 
-    if (!shouldRespond) return;
-
-    const userInput = message.content.startsWith("!ask ")
-      ? message.content.slice(5).trim()
-      : message.content.replace(`<@${client.user.id}>`, "").trim();
-
-    if (!userInput) {
-      await message.reply("Please provide a message after mention or `!ask`.");
-      return;
-    }
-
-    const skill = getSkillById(config.defaultSkillId);
-    if (!skill) {
-      await message.reply(`Skill "${config.defaultSkillId}" is not configured.`);
-      return;
-    }
+    const command = getCommand(parsed.name);
+    if (!command) return;
 
     try {
-      await message.channel.sendTyping();
-      const reply = await generateSkillReply({
-        client: llmClient,
-        model: config.openAiModel,
-        skill,
-        userMessage: userInput,
-      });
-      await message.reply(reply);
+      const ctx = {
+        prefix: config.commandPrefix,
+        args: parsed.args,
+        message,
+      };
+      const reply = command.respond(ctx);
+      const text = typeof reply === "string" ? reply : String(reply);
+      await message.reply(text);
     } catch (error) {
-      console.error("Failed to generate reply:", error);
-      await message.reply("Sorry, I ran into an error while generating a reply.");
+      console.error("Command failed:", error);
+      await message.reply("执行指令时出错，请稍后再试。");
     }
   });
 

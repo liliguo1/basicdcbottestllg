@@ -1,7 +1,7 @@
 {
   "name": "basicdcbot",
   "version": "1.0.0",
-  "description": "Basic Discord chat bot with skill-based LLM replies",
+  "description": "Basic Discord bot with prefix commands (no LLM)",
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",
@@ -13,7 +13,6 @@
   "type": "commonjs",
   "dependencies": {
     "discord.js": "^14.26.3",
-    "dotenv": "^17.4.2",
-    "openai": "^6.34.0"
+    "dotenv": "^17.4.2"
   }
 }
